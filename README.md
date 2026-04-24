@@ -2,15 +2,6 @@
 
 Solução em Rust para a [Rinha de Backend 2026](https://github.com/zanfranceschi/rinha-de-backend-2026), uma competição de backend focada em detecção de fraude em transações de cartão usando busca por vizinhos mais próximos (k-NN) em vetores de alta dimensão.
 
-## A competição
-
-O desafio é construir uma API de detecção de fraude que recebe dados de uma transação, a converte em um vetor de 14 dimensões e faz uma busca pelos 5 vizinhos mais próximos em um dataset de referência com 100.000 vetores rotulados. A pontuação final é composta por dois critérios independentes:
-
-- **Latência (p99):** recompensa latências menores de forma logarítmica — cada 10× de melhoria vale +1000 pontos
-- **Qualidade de detecção:** penaliza falsos negativos (peso 3×) e erros HTTP (peso 5×) mais que falsos positivos (peso 1×)
-
-**Restrição total de recursos:** 1 CPU + 350 MB de RAM distribuídos entre todos os serviços.
-
 ## Arquitetura
 
 ```
