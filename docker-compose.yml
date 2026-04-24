@@ -10,17 +10,19 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.45"
+          cpus: "0.40"
           memory: "160M"
     ulimits:
       nofile:
         soft: 65535
         hard: 65535
+    cpuset: "0,1"
 
   api2:
     <<: *api
     environment:
       - SOCK=/run/sock/api2.sock
+    cpuset: "2,3"
 
   lb:
     image: nginx:1.27-alpine
@@ -35,12 +37,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.10"
+          cpus: "0.20"
           memory: "30M"
     ulimits:
       nofile:
         soft: 65535
         hard: 65535
+    cpuset: "0,2"
 
 volumes:
   sock:
