@@ -1,0 +1,59 @@
+# Resource split (must sum to ≤ 1 CPU and ≤ 350 MB):
+#   lb   : 0.10 CPU /  30 MB
+#   api1 : 0.45 CPU / 160 MB
+#   api2 : 0.45 CPU / 160 MB
+#   total: 1.00 CPU / 350 MB
+#
+# Network: default bridge (host/privileged are disallowed by the spec).
+# Inter-container IPC: UNIX domain sockets on a shared tmpfs volume. This
+# avoids TCP loopback overhead (~40–60 µs per request on this hardware).
+
+services:
+  api1: &api
+    image: rinha-fraud-2026:latest
+    build: .
+    environment:
+      - SOCK=/run/sock/api1.sock
+    volumes:
+      - sock:/run/sock
+    deploy:
+      resources:
+        limits:
+          cpus: "0.45"
+          memory: "160M"
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+  api2:
+    <<: *api
+    environment:
+      - SOCK=/run/sock/api2.sock
+
+  lb:
+    image: nginx:1.27-alpine
+    depends_on:
+      - api1
+      - api2
+    ports:
+      - "9999:9999"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - sock:/run/sock
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: "30M"
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+volumes:
+  sock:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: "size=4m,mode=0777"

@@ -1,0 +1,7 @@
+{
+    "participants": ["Jairo Blatt"],
+    "social": ["https://github.com/jairoblatt"],
+    "source-code-repo": "https://github.com/jairoblatt/rinha-de-backend-2026",
+    "stack": ["rust", "nginx"],
+    "open_to_work": true
+}

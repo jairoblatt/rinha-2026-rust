@@ -1,0 +1,30 @@
+[package]
+name = "rinha-fraud-2026"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+tokio = { version = "1", default-features = false, features = ["rt", "net", "macros", "io-util", "time"] }
+hyper = { version = "1", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes = "1"
+memchr = "2"
+
+[build-dependencies]
+flate2 = "1"
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
+debug = 0
+overflow-checks = false
+incremental = false
+
+[profile.release.package."*"]
+opt-level = 3
