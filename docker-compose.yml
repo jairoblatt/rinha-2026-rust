@@ -1,17 +1,8 @@
-# Resource split (must sum to ≤ 1 CPU and ≤ 350 MB):
-#   lb   : 0.10 CPU /  30 MB
-#   api1 : 0.45 CPU / 160 MB
-#   api2 : 0.45 CPU / 160 MB
-#   total: 1.00 CPU / 350 MB
-#
-# Network: default bridge (host/privileged are disallowed by the spec).
-# Inter-container IPC: UNIX domain sockets on a shared tmpfs volume. This
-# avoids TCP loopback overhead (~40–60 µs per request on this hardware).
-
 services:
   api1: &api
-    image: rinha-fraud-2026:latest
-    build: .
+    image: jrblatt/rinha-2026-rust:latest
+    # image: rinha-fraud-2026:latest
+    # build: .
     environment:
       - SOCK=/run/sock/api1.sock
     volumes:
