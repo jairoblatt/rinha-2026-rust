@@ -1,6 +1,6 @@
 services:
   api1: &api 
-    image: jrblatt/rinha-2026-rust:v0.0.5-map
+    image: jrblatt/rinha-2026-rust:v0.0.6
     # image: rinha-fraud-2026:latest
     # build: .
     environment:
