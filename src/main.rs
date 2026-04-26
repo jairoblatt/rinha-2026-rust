@@ -13,8 +13,9 @@ use std::path::PathBuf;
 use tokio::net::UnixListener;
 
 fn main() -> std::io::Result<()> {
-    data::init();
-    knn::warmup();
+    for _ in 0..10 {
+        let _ = knn::warmup();
+    }
 
     let env = env::from_env();
     let sock_path = PathBuf::from(env.sock_path);

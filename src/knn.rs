@@ -14,11 +14,21 @@ pub fn knn5(query: &[i16; 16]) -> Top5 {
     unsafe { knn5_avx2(query) }
 }
 
+#[inline(always)]
+unsafe fn reduce(sq: __m256i) -> u32 {
+    let lo = _mm256_castsi256_si128(sq);
+    let hi = _mm256_extracti128_si256(sq, 1);
+    let s = _mm_add_epi32(lo, hi);
+    let s = _mm_add_epi32(s, _mm_srli_si128(s, 8));
+    let s = _mm_add_epi32(s, _mm_srli_si128(s, 4));
+    _mm_cvtsi128_si32(s) as u32
+}
+
 #[target_feature(enable = "avx2")]
 unsafe fn knn5_avx2(query: &[i16; 16]) -> Top5 {
-    let q = _mm256_loadu_si256(query.as_ptr() as *const __m256i);
+    let q = _mm256_load_si256(query.as_ptr() as *const __m256i);
 
-    let refs_ptr = data::refs().as_ptr() as *const __m256i;
+    let refs_ptr = data::refs() as *const __m256i;
 
     let mut td = [u32::MAX; 5];
     let mut ti = [0u32; 5];
@@ -26,28 +36,40 @@ unsafe fn knn5_avx2(query: &[i16; 16]) -> Top5 {
 
     let n = data::N;
     let mut i = 0usize;
-    while i < n {
-        if i & 1 == 0 && i + 4 < n {
-            _mm_prefetch(refs_ptr.add(i + 4) as *const i8, _MM_HINT_T0);
+
+    while i + 1 < n {
+        if i + 16 < n {
+            _mm_prefetch(refs_ptr.add(i + 16) as *const i8, _MM_HINT_T0);
         }
 
-        let r = _mm256_load_si256(refs_ptr.add(i));
-        let diff = _mm256_sub_epi16(q, r);
-        let sq = _mm256_madd_epi16(diff, diff);
+        let r0 = _mm256_load_si256(refs_ptr.add(i));
+        let r1 = _mm256_load_si256(refs_ptr.add(i + 1));
 
-        let lo = _mm256_castsi256_si128(sq);
-        let hi = _mm256_extracti128_si256(sq, 1);
-        let s = _mm_add_epi32(lo, hi);
-        let s = _mm_add_epi32(s, _mm_srli_si128(s, 8));
-        let s = _mm_add_epi32(s, _mm_srli_si128(s, 4));
-        let dist = _mm_cvtsi128_si32(s) as u32;
+        let d0 = _mm256_sub_epi16(q, r0);
+        let d1 = _mm256_sub_epi16(q, r1);
 
-        if dist < threshold {
-            insert(&mut td, &mut ti, dist, i as u32);
+        let dist0 = reduce(_mm256_madd_epi16(d0, d0));
+        let dist1 = reduce(_mm256_madd_epi16(d1, d1));
+
+        if dist0 < threshold {
+            insert(&mut td, &mut ti, dist0, i as u32);
+            threshold = td[4];
+        }
+        if dist1 < threshold {
+            insert(&mut td, &mut ti, dist1, (i + 1) as u32);
             threshold = td[4];
         }
 
-        i += 1;
+        i += 2;
+    }
+
+    if i < n {
+        let r = _mm256_load_si256(refs_ptr.add(i));
+        let d = _mm256_sub_epi16(q, r);
+        let dist = reduce(_mm256_madd_epi16(d, d));
+        if dist < threshold {
+            insert(&mut td, &mut ti, dist, i as u32);
+        }
     }
 
     Top5 { idx: ti }

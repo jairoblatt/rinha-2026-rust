@@ -36,24 +36,39 @@ fn main() {
     let arr: Vec<Value> = serde_json::from_str(&json_str).expect("parse json");
     assert_eq!(arr.len(), N, "expected {} references, got {}", N, arr.len());
 
-    let mut refs = vec![0u8; N * STRIDE * 2];
-    let mut labels = vec![0u8; N];
+    let mut pairs: Vec<([i16; STRIDE], u8)> = Vec::with_capacity(N);
 
     for (i, entry) in arr.iter().enumerate() {
         let vec = entry["vector"].as_array().expect("vector field");
 
         assert_eq!(vec.len(), 14, "ref {} has {} dims", i, vec.len());
 
-        for (j, v) in vec.iter().enumerate() {
-            let f = v.as_f64().expect("numeric vector element");
-            let q = quant(f, j).to_le_bytes();
+        let mut v = [0i16; STRIDE];
+        for (j, val) in vec.iter().enumerate() {
+            let f = val.as_f64().expect("numeric vector element");
+            v[j] = quant(f, j);
+        }
+
+        let label = entry["label"].as_str().expect("label field");
+        let l = if label == "fraud" { 1u8 } else { 0u8 };
+        pairs.push((v, l));
+    }
+
+    pairs.sort_unstable_by_key(|(v, _)| -> u32 {
+        v[..14].iter().map(|&x| (x as i32 * x as i32) as u32).sum()
+    });
+
+    let mut refs = vec![0u8; N * STRIDE * 2];
+    let mut labels = vec![0u8; N];
+
+    for (i, (v, l)) in pairs.iter().enumerate() {
+        for (j, &dim) in v.iter().enumerate() {
+            let q = dim.to_le_bytes();
             let off = (i * STRIDE + j) * 2;
             refs[off] = q[0];
             refs[off + 1] = q[1];
         }
-
-        let label = entry["label"].as_str().expect("label field");
-        labels[i] = if label == "fraud" { 1 } else { 0 };
+        labels[i] = *l;
     }
 
     File::create(out_dir.join("refs.bin"))
