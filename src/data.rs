@@ -1,4 +1,4 @@
-pub const N: usize = 100_000;
+pub const N: usize = 1_000_000;
 pub const STRIDE: usize = 16;
 
 #[repr(C, align(64))]

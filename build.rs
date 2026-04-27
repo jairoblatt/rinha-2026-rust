@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
-const N: usize = 100_000;
+const N: usize = 1_000_000;
 const STRIDE: usize = 16;
 const SCALE: f64 = 8192.0;
 
@@ -30,7 +30,7 @@ fn main() {
 
     let file = File::open(&gz_path).unwrap_or_else(|e| panic!("open {}: {}", gz_path.display(), e));
     let mut decoder = GzDecoder::new(file);
-    let mut json_str = String::with_capacity(12 * 1024 * 1024);
+    let mut json_str = String::with_capacity(128 * 1024 * 1024);
     decoder.read_to_string(&mut json_str).expect("gunzip");
 
     let arr: Vec<Value> = serde_json::from_str(&json_str).expect("parse json");

@@ -1,5 +1,5 @@
 services:
-  api1: &api # image: jrblatt/rinha-2026-rust:latest
+  api1: &api # image: jrblatt/rinha-2026-rust:v0.0.8
     image: rinha-fraud-2026:latest
     build: .
     environment:
@@ -9,7 +9,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.40"
+          cpus: "0.4"
           memory: "160M"
     ulimits:
       nofile:
@@ -24,14 +24,14 @@ services:
     # cpuset: "2,3"
 
   lb:
-    image: nginx:1.27-alpine
+    image: haproxy:3.0-alpine
     depends_on:
       - api1
       - api2
     ports:
       - "9999:9999"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
       - sock:/run/sock
     deploy:
       resources:
