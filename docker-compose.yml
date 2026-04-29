@@ -1,6 +1,6 @@
 services:
   api1: &api 
-    image: jrblatt/rinha-2026-rust:v0.0.8
+    image: jrblatt/rinha-2026-rust:v0.0.9
     # image: rinha-fraud-2026:latest
     # build: .
     environment:
@@ -16,13 +16,13 @@ services:
       nofile:
         soft: 65535
         hard: 65535
-    # cpuset: "0,1"
+      cpuset: "0"
 
   api2:
     <<: *api
     environment:
       - SOCK=/run/sock/api2.sock
-    # cpuset: "2,3"
+    cpuset: "1"
 
   lb:
     image: haproxy:3.0-alpine
@@ -43,7 +43,7 @@ services:
       nofile:
         soft: 65535
         hard: 65535
-    # cpuset: "0,2"
+      cpuset: "2,3"
 
 volumes:
   sock:
