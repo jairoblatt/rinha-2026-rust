@@ -1,6 +1,6 @@
 services:
   api1: &api 
-    image: jrblatt/rinha-2026-rust:v0.0.9
+    image: jrblatt/rinha-2026-rust:v0.1.1
     # image: rinha-fraud-2026:latest
     # build: .
     environment:
@@ -10,8 +10,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.4"
-          memory: "160M"
+          cpus: "0.35"
+          memory: "150M"
     ulimits:
       nofile:
         soft: 65535
@@ -37,8 +37,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.20"
-          memory: "30M"
+          cpus: "0.30"
+          memory: "50M"
     ulimits:
       nofile:
         soft: 65535
