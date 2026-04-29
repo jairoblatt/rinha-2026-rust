@@ -16,7 +16,7 @@ services:
       nofile:
         soft: 65535
         hard: 65535
-      cpuset: "0"
+    cpuset: "0"
 
   api2:
     <<: *api
@@ -43,7 +43,7 @@ services:
       nofile:
         soft: 65535
         hard: 65535
-      cpuset: "2,3"
+    cpuset: "2,3"
 
 volumes:
   sock:
