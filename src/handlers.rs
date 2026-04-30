@@ -1,3 +1,4 @@
+use crate::data;
 use crate::json;
 use crate::knn;
 use crate::response;
@@ -52,8 +53,7 @@ async fn fraud_score_handler(req: Request<Incoming>) -> Response<Full<Bytes>> {
     };
 
     let query = vector::vectorize(&payload);
-    let top = knn::knn5(&query.0);
-    let frauds = knn::fraud_count(&top.idx);
+    let frauds = knn::knn5_fraud_count(&query, data::dataset());
     ok_json(response::body_for(frauds))
 }
 

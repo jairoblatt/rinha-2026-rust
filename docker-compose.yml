@@ -9,22 +9,23 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.4"
+          cpus: "0.40"
           memory: "160M"
     ulimits:
       nofile:
         soft: 65535
         hard: 65535
-    # cpuset: "0,1"
+    cpuset: "0"
 
   api2:
     <<: *api
     environment:
       - SOCK=/run/sock/api2.sock
-    # cpuset: "2,3"
+    cpuset: "1"
 
   lb:
     image: haproxy:3.0-alpine
+    restart: always
     depends_on:
       - api1
       - api2
@@ -42,7 +43,7 @@ services:
       nofile:
         soft: 65535
         hard: 65535
-    # cpuset: "0,2"
+    cpuset: "2,3"
 
 volumes:
   sock:
