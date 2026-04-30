@@ -1,5 +1,7 @@
-FROM --platform=linux/amd64 rust:1.83-alpine AS build
-RUN apk add --no-cache musl-dev
+FROM --platform=linux/amd64 rust:1.83-slim AS build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 
 COPY Cargo.toml ./
@@ -16,13 +18,13 @@ ENV RUSTFLAGS="-C target-cpu=haswell -C target-feature=+avx2,+fma,+f16c,+bmi2,+p
 
 COPY data/index.bin.gz* ./data/
 RUN if [ ! -f data/index.bin.gz ]; then \
-        cargo build --release --target x86_64-unknown-linux-musl --bin build_index && \
-        ./target/x86_64-unknown-linux-musl/release/build_index; \
+        cargo build --release --bin build_index && \
+        ./target/release/build_index; \
     fi
 
-RUN cargo build --release --target x86_64-unknown-linux-musl --bin rinha-fraud-2026 && \
-    strip target/x86_64-unknown-linux-musl/release/rinha-fraud-2026
+RUN cargo build --release --bin rinha-fraud-2026 && \
+    strip target/release/rinha-fraud-2026
 
-FROM scratch
-COPY --from=build /src/target/x86_64-unknown-linux-musl/release/rinha-fraud-2026 /rinha
+FROM debian:12-slim
+COPY --from=build /src/target/release/rinha-fraud-2026 /rinha
 ENTRYPOINT ["/rinha"]
