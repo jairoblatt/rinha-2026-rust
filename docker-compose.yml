@@ -33,7 +33,7 @@ services:
     environment:
       - UPSTREAMS=/run/sock/api1.sock,/run/sock/api2.sock
       - PORT=9999
-      - BUF_SIZE=1024
+      - BUF_SIZE=2048
     ports:
       - "9999:9999"
     volumes:
