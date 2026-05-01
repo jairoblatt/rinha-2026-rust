@@ -16,7 +16,6 @@ services:
       nofile:
         soft: 65535
         hard: 65535
-    cpuset: "0"
     security_opt:
       - seccomp:unconfined
 
@@ -24,7 +23,6 @@ services:
     <<: *api
     environment:
       - SOCK=/run/sock/api2.sock
-    cpuset: "1"
 
   lb:
     image: haproxy:3.0-alpine
@@ -45,7 +43,6 @@ services:
       nofile:
         soft: 65535
         hard: 65535
-    cpuset: "2,3"
 
 volumes:
   sock:
