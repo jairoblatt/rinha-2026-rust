@@ -10,7 +10,6 @@ RUN mkdir -p src/bin && \
     echo 'fn main() {}' > src/build_index.rs && \
     cargo fetch && rm -rf src
 
-COPY build.rs ./
 COPY src ./src
 COPY resources ./resources
 
