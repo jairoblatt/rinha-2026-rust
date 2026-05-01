@@ -25,14 +25,14 @@ services:
       - SOCK=/run/sock/api2.sock
 
   lb:
-    image: nginx:1.27-alpine
+    image: haproxy:3.0-alpine
     depends_on:
       - api1
       - api2
     ports:
       - "9999:9999"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
       - sock:/run/sock
     deploy:
       resources:
