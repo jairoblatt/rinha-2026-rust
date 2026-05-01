@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [[bin]]
 name = "build_index"
-path = "src/bin/build_index.rs"
+path = "src/build_index.rs"
 
 [dependencies]
 monoio = { version = "0.2", default-features = false, features = ["iouring", "legacy", "macros"] }

@@ -7,7 +7,7 @@ WORKDIR /src
 COPY Cargo.toml ./
 RUN mkdir -p src/bin && \
     echo 'fn main() {}' > src/main.rs && \
-    echo 'fn main() {}' > src/bin/build_index.rs && \
+    echo 'fn main() {}' > src/build_index.rs && \
     cargo fetch && rm -rf src
 
 COPY build.rs ./
