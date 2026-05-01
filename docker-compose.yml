@@ -25,24 +25,29 @@ services:
       - SOCK=/run/sock/api2.sock
 
   lb:
-    image: haproxy:3.0-alpine
+    image: jrblatt/so-no-forevis:v0.0.1
+    restart: always
     depends_on:
       - api1
       - api2
+    environment:
+      - UPSTREAMS=/run/sock/api1.sock,/run/sock/api2.sock
+      - PORT=9999
     ports:
       - "9999:9999"
     volumes:
-      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
       - sock:/run/sock
     deploy:
       resources:
         limits:
-          cpus: "0.2"
+          cpus: "0.20"
           memory: "30M"
     ulimits:
       nofile:
         soft: 65535
         hard: 65535
+    security_opt:
+      - seccomp:unconfined
 
 volumes:
   sock:
