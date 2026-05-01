@@ -90,23 +90,29 @@ fn parse(buf: &[u8]) -> Parsed {
         Some(p) => p,
         None => return Parsed::Bad,
     };
+
     let line = &buf[..line_end];
 
     if line.starts_with(b"POST ") {
         let rest = &line[5..];
+
         if path_eq(rest, b"/fraud-score") {
             let cl = parse_content_length(&buf[line_end..header_end]).unwrap_or(0);
+
             let body_start = header_end + 4;
             let body_end = body_start + cl;
+
             if buf.len() < body_end {
                 return Parsed::Incomplete;
             }
+
             return Parsed::Fraud {
                 body_start,
                 body_end,
                 consumed: body_end,
             };
         }
+
         return Parsed::NotFound {
             consumed: header_end + 4,
         };
@@ -132,10 +138,13 @@ fn path_eq(rest: &[u8], path: &[u8]) -> bool {
     if rest.len() < path.len() + 1 {
         return false;
     }
+
     if &rest[..path.len()] != path {
         return false;
     }
+
     let next = rest[path.len()];
+
     next == b' ' || next == b'?'
 }
 
@@ -186,6 +195,7 @@ pub async fn serve_connection(mut stream: UnixStream) {
             if iovecs.len() == MAX_IOVECS {
                 break;
             }
+
             match parse(&rx[head..tail]) {
                 Parsed::Incomplete => break,
                 Parsed::Bad => {
@@ -193,12 +203,12 @@ pub async fn serve_connection(mut stream: UnixStream) {
                     close_after = true;
                     break;
                 }
-                Parsed::Ready { consumed } => {
-                    push_iovec(&mut iovecs, response::RESP_READY);
-                    head += consumed;
-                }
                 Parsed::NotFound { consumed } => {
                     push_iovec(&mut iovecs, response::RESP_NOT_FOUND);
+                    head += consumed;
+                }
+                Parsed::Ready { consumed } => {
+                    push_iovec(&mut iovecs, response::RESP_READY);
                     head += consumed;
                 }
                 Parsed::Fraud {
@@ -216,10 +226,11 @@ pub async fn serve_connection(mut stream: UnixStream) {
         if !iovecs.is_empty() {
             let mut remaining: usize = iovecs.iter().map(|v| v.iov_len).sum();
             let mut owned = OwnedIoVec(std::mem::replace(&mut iovecs, Vec::with_capacity(0)));
+
             loop {
                 let (res, back) = stream.writev(owned).await;
                 owned = back;
-                let n = match res {
+                let n: usize = match res {
                     Ok(0) => return,
                     Ok(n) => n,
                     Err(_) => return,
@@ -230,15 +241,20 @@ pub async fn serve_connection(mut stream: UnixStream) {
                 remaining -= n;
                 let mut sent = n;
                 let mut idx = 0;
+
                 while idx < owned.0.len() && sent >= owned.0[idx].iov_len {
                     sent -= owned.0[idx].iov_len;
                     idx += 1;
                 }
+
                 owned.0.drain(..idx);
+
                 if sent > 0 && !owned.0.is_empty() {
                     let head_iov = &mut owned.0[0];
+
                     head_iov.iov_base =
                         unsafe { (head_iov.iov_base as *mut u8).add(sent) as *mut libc::c_void };
+
                     head_iov.iov_len -= sent;
                 }
             }

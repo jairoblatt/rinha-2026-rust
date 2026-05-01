@@ -28,15 +28,11 @@ fn main() -> std::io::Result<()> {
     let _ = std::fs::remove_file(&sock_path);
 
     let mut rt = RuntimeBuilder::<FusionDriver>::new()
-        .with_entries(256)
         .build()
         .expect("build monoio runtime");
 
     rt.block_on(async move {
-        let opts = ListenerOpts::new()
-            .reuse_port(false)
-            .reuse_addr(false)
-            .backlog(4096);
+        let opts = ListenerOpts::new().reuse_addr(false).reuse_port(false);
         let listener = UnixListener::bind_with_config(&sock_path, &opts).expect("bind UDS");
         let _ = std::fs::set_permissions(&sock_path, std::fs::Permissions::from_mode(0o666));
 
@@ -49,5 +45,6 @@ fn main() -> std::io::Result<()> {
             }
         }
     });
+
     Ok(())
 }
