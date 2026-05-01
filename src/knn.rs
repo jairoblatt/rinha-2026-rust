@@ -13,8 +13,21 @@ pub fn knn5_fraud_count(query: &[f32; 14], ds: &Dataset) -> u8 {
 
 pub fn warmup() {
     let ds = data::dataset();
+
+    let mut sink: u64 = 0;
+
+    for v in ds.centroids.iter() {
+        sink ^= v.to_bits() as u64;
+    }
+
+    for v in ds.offsets.iter() {
+        sink ^= *v as u64;
+    }
+
+    let _ = sink;
+
     let mut state = 0x12345678u32;
-    for _ in 0..50 {
+    for _ in 0..500 {
         let mut q = [0.0f32; 14];
         for v in q.iter_mut() {
             state = state.wrapping_mul(1664525).wrapping_add(1013904223);
