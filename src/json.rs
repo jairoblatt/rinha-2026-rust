@@ -1,74 +1,97 @@
 pub struct Payload {
     pub amount: f32,
+    pub customer_avg_amount: f32,
+    pub merchant_avg_amount: f32,
+    pub km_from_home: f32,
+    pub km_from_current: f32,
+    pub tx_count_24h: u32,
+    pub mcc: u32,
+    pub minutes_since_last: u32,
     pub installments: u8,
     pub hour: u8,
     pub day_of_week: u8,
-    pub customer_avg_amount: f32,
-    pub tx_count_24h: u32,
-    pub mcc: u32,
-    pub merchant_avg_amount: f32,
     pub is_online: bool,
     pub card_present: bool,
-    pub km_from_home: f32,
     pub is_unknown_merchant: bool,
     pub has_last_tx: bool,
-    pub minutes_since_last: u32,
-    pub km_from_current: f32,
 }
+
+static FRAC_POWERS: [f64; 19] = [
+    1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14,
+    1e-15, 1e-16, 1e-17, 1e-18,
+];
 
 pub fn parse(buf: &[u8]) -> Option<Payload> {
     let mut p = 0usize;
 
-    skip_through(&mut p, buf, b"\"amount\"")?;
+    to_next_value(&mut p, buf)?;
+    skip_string(&mut p, buf)?;
+
+    to_next_value(&mut p, buf)?;
+    to_next_value(&mut p, buf)?;
     let amount = scan_f32(&mut p, buf);
 
-    skip_through(&mut p, buf, b"\"installments\"")?;
+    to_next_value(&mut p, buf)?;
     let installments = scan_u32(&mut p, buf) as u8;
 
-    skip_through(&mut p, buf, b"\"requested_at\"")?;
+    to_next_value(&mut p, buf)?;
     let (req_y, req_mo, req_d, req_h, req_min) = scan_iso(&mut p, buf)?;
 
-    skip_through(&mut p, buf, b"\"avg_amount\"")?;
+    to_next_value(&mut p, buf)?;
+    to_next_value(&mut p, buf)?;
     let customer_avg_amount = scan_f32(&mut p, buf);
 
-    skip_through(&mut p, buf, b"\"tx_count_24h\"")?;
+    to_next_value(&mut p, buf)?;
     let tx_count_24h = scan_u32(&mut p, buf);
 
-    skip_through(&mut p, buf, b"\"known_merchants\"")?;
-    skip_to(&mut p, buf, b'[')?;
+    to_next_value(&mut p, buf)?;
     p += 1;
-    let km_start = p;
-    skip_to(&mut p, buf, b']')?;
-    let km_end = p;
-    p += 1;
+    let mut merchant_slices: [&[u8]; 16] = [&[]; 16];
+    let mut mc = 0usize;
+    while p < buf.len() && buf[p] != b']' {
+        if buf[p] == b'"' {
+            p += 1;
+            let start = p;
+            let end = memchr::memchr(b'"', &buf[p..])?;
+            if mc < 16 {
+                merchant_slices[mc] = &buf[start..start + end];
+                mc += 1;
+            }
+            p = start + end + 1;
+        } else {
+            p += 1;
+        }
+    }
+    if p < buf.len() {
+        p += 1;
+    }
 
-    skip_through(&mut p, buf, b"\"id\"")?;
+    to_next_value(&mut p, buf)?;
+    to_next_value(&mut p, buf)?;
     let merchant_id = scan_string(&mut p, buf)?;
 
-    skip_through(&mut p, buf, b"\"mcc\"")?;
+    to_next_value(&mut p, buf)?;
     let mcc = scan_mcc(&mut p, buf);
 
-    skip_through(&mut p, buf, b"\"avg_amount\"")?;
+    to_next_value(&mut p, buf)?;
     let merchant_avg_amount = scan_f32(&mut p, buf);
 
-    skip_through(&mut p, buf, b"\"is_online\"")?;
+    to_next_value(&mut p, buf)?;
+    to_next_value(&mut p, buf)?;
     let is_online = scan_bool(&mut p, buf);
 
-    skip_through(&mut p, buf, b"\"card_present\"")?;
+    to_next_value(&mut p, buf)?;
     let card_present = scan_bool(&mut p, buf);
 
-    skip_through(&mut p, buf, b"\"km_from_home\"")?;
+    to_next_value(&mut p, buf)?;
     let km_from_home = scan_f32(&mut p, buf);
 
-    skip_through(&mut p, buf, b"\"last_transaction\"")?;
-    skip_colon(&mut p, buf);
-    skip_ws(&mut p, buf);
-
+    to_next_value(&mut p, buf)?;
     let has_last_tx = p < buf.len() && buf[p] != b'n';
     let (minutes_since_last, km_from_current) = if has_last_tx {
-        skip_through(&mut p, buf, b"\"timestamp\"")?;
+        to_next_value(&mut p, buf)?;
         let (ly, lmo, ld, lh, lmin) = scan_iso(&mut p, buf)?;
-        skip_through(&mut p, buf, b"\"km_from_current\"")?;
+        to_next_value(&mut p, buf)?;
         let km = scan_f32(&mut p, buf);
         let mins = minutes_between(ly, lmo, ld, lh, lmin, req_y, req_mo, req_d, req_h, req_min);
         (mins, km)
@@ -76,7 +99,7 @@ pub fn parse(buf: &[u8]) -> Option<Payload> {
         (0, 0.0)
     };
 
-    let is_unknown_merchant = !array_contains(&buf[km_start..km_end], merchant_id);
+    let is_unknown_merchant = !merchant_slices[..mc].iter().any(|&m| m == merchant_id);
 
     Some(Payload {
         amount,
@@ -98,46 +121,35 @@ pub fn parse(buf: &[u8]) -> Option<Payload> {
 }
 
 #[inline]
-fn skip_through(p: &mut usize, buf: &[u8], needle: &[u8]) -> Option<()> {
-    let pos = memchr::memmem::find(&buf[*p..], needle)?;
-    *p += pos + needle.len();
+fn to_next_value(p: &mut usize, buf: &[u8]) -> Option<()> {
+    loop {
+        let pos = memchr::memchr2(b':', b'"', &buf[*p..])?;
+        *p += pos;
+        if buf[*p] == b':' {
+            *p += 1;
+            while *p < buf.len() && matches!(buf[*p], b' ' | b'\t' | b'\n' | b'\r') {
+                *p += 1;
+            }
+            return Some(());
+        }
+        *p += 1;
+        let end = memchr::memchr(b'"', &buf[*p..])?;
+        *p += end + 1;
+    }
+}
+
+#[inline]
+fn skip_string(p: &mut usize, buf: &[u8]) -> Option<()> {
+    if *p < buf.len() && buf[*p] == b'"' {
+        *p += 1;
+    }
+    let end = memchr::memchr(b'"', &buf[*p..])?;
+    *p += end + 1;
     Some(())
-}
-
-#[inline]
-fn skip_to(p: &mut usize, buf: &[u8], byte: u8) -> Option<()> {
-    let pos = memchr::memchr(byte, &buf[*p..])?;
-    *p += pos;
-    Some(())
-}
-
-#[inline]
-fn skip_colon(p: &mut usize, buf: &[u8]) {
-    while *p < buf.len() && buf[*p] != b':' {
-        *p += 1;
-    }
-    if *p < buf.len() {
-        *p += 1;
-    }
-}
-
-#[inline]
-fn skip_ws(p: &mut usize, buf: &[u8]) {
-    while *p < buf.len() && matches!(buf[*p], b' ' | b'\t' | b'\n' | b'\r') {
-        *p += 1;
-    }
-}
-
-#[inline]
-fn skip_to_value(p: &mut usize, buf: &[u8]) {
-    while *p < buf.len() && matches!(buf[*p], b':' | b' ' | b'\t' | b'\n' | b'\r') {
-        *p += 1;
-    }
 }
 
 #[inline]
 fn scan_f32(p: &mut usize, buf: &[u8]) -> f32 {
-    skip_to_value(p, buf);
     let (v, len) = parse_f32(&buf[*p..]);
     *p += len;
     v
@@ -145,7 +157,6 @@ fn scan_f32(p: &mut usize, buf: &[u8]) -> f32 {
 
 #[inline]
 fn scan_u32(p: &mut usize, buf: &[u8]) -> u32 {
-    skip_to_value(p, buf);
     let mut v = 0u32;
     while *p < buf.len() && buf[*p].is_ascii_digit() {
         v = v.wrapping_mul(10).wrapping_add((buf[*p] - b'0') as u32);
@@ -156,17 +167,13 @@ fn scan_u32(p: &mut usize, buf: &[u8]) -> u32 {
 
 #[inline]
 fn scan_bool(p: &mut usize, buf: &[u8]) -> bool {
-    skip_to_value(p, buf);
-    let result = *p < buf.len() && buf[*p] == b't';
-    while *p < buf.len() && buf[*p].is_ascii_alphabetic() {
-        *p += 1;
-    }
-    result
+    let is_true = *p < buf.len() && buf[*p] == b't';
+    *p += if is_true { 4 } else { 5 };
+    is_true
 }
 
 #[inline]
 fn scan_string<'a>(p: &mut usize, buf: &'a [u8]) -> Option<&'a [u8]> {
-    skip_to_value(p, buf);
     if *p >= buf.len() || buf[*p] != b'"' {
         return None;
     }
@@ -179,7 +186,6 @@ fn scan_string<'a>(p: &mut usize, buf: &'a [u8]) -> Option<&'a [u8]> {
 
 #[inline]
 fn scan_mcc(p: &mut usize, buf: &[u8]) -> u32 {
-    skip_to_value(p, buf);
     if *p < buf.len() && buf[*p] == b'"' {
         *p += 1;
     }
@@ -196,12 +202,11 @@ fn scan_mcc(p: &mut usize, buf: &[u8]) -> u32 {
 
 #[inline]
 fn scan_iso(p: &mut usize, buf: &[u8]) -> Option<(u16, u8, u8, u8, u8)> {
-    skip_to_value(p, buf);
     if *p < buf.len() && buf[*p] == b'"' {
         *p += 1;
     }
     let s = &buf[*p..];
-    if s.len() < 19 {
+    if s.len() < 20 {
         return None;
     }
     let y = (s[0] - b'0') as u16 * 1000
@@ -213,28 +218,10 @@ fn scan_iso(p: &mut usize, buf: &[u8]) -> Option<(u16, u8, u8, u8, u8)> {
     let h = (s[11] - b'0') * 10 + (s[12] - b'0');
     let mi = (s[14] - b'0') * 10 + (s[15] - b'0');
     *p += 20;
-    Some((y, mo, d, h, mi))
-}
-
-fn array_contains(buf: &[u8], needle: &[u8]) -> bool {
-    let mut i = 0;
-    while i < buf.len() {
-        if buf[i] == b'"' {
-            let start = i + 1;
-            match memchr::memchr(b'"', &buf[start..]) {
-                Some(off) => {
-                    if &buf[start..start + off] == needle {
-                        return true;
-                    }
-                    i = start + off + 1;
-                }
-                None => break,
-            }
-        } else {
-            i += 1;
-        }
+    if let Some(off) = memchr::memchr(b'"', &buf[*p..]) {
+        *p += off + 1;
     }
-    false
+    Some((y, mo, d, h, mi))
 }
 
 fn parse_f32(s: &[u8]) -> (f32, usize) {
@@ -263,7 +250,7 @@ fn parse_f32(s: &[u8]) -> (f32, usize) {
             pos += 1;
         }
         let digits = (pos - frac_start).min(18);
-        v += frac as f64 * 10f64.powi(-(digits as i32));
+        v += frac as f64 * FRAC_POWERS[digits];
     }
     if pos < s.len() && (s[pos] == b'e' || s[pos] == b'E') {
         pos += 1;
