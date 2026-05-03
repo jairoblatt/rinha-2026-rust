@@ -25,7 +25,7 @@ services:
       - SOCK=/run/sock/api2.sock
 
   lb:
-    image: jrblatt/so-no-forevis:v0.0.2
+    image: jrblatt/so-no-forevis:v0.0.3
     restart: always
     depends_on:
       - api1
