@@ -2,7 +2,7 @@ use crate::data::{self, Dataset};
 use std::arch::x86_64::*;
 use std::mem::MaybeUninit;
 
-const FAST_NPROBE: usize = 16;
+const FAST_NPROBE: usize = 8;
 const FULL_NPROBE: usize = 24;
 const MAX_CENTROIDS: usize = 4096;
 const VECTOR_SCALE: f32 = 0.0001;
