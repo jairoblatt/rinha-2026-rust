@@ -6,7 +6,6 @@ use crate::vector;
 
 use monoio::buf::{IoBufMut, IoVecBuf};
 use monoio::io::{AsyncReadRent, AsyncWriteRent};
-use monoio::net::UnixStream;
 
 const RX_CAP: usize = 8192;
 const MAX_IOVECS: usize = 16;
@@ -181,7 +180,7 @@ unsafe impl IoVecBuf for OwnedIoVec {
     }
 }
 
-pub async fn serve_connection(mut stream: UnixStream) {
+pub async fn serve_connection<S: AsyncReadRent + AsyncWriteRent>(mut stream: S) {
     let mut rx: Box<[u8]> = vec![0u8; RX_CAP].into_boxed_slice();
     let mut iovecs: Vec<libc::iovec> = Vec::with_capacity(MAX_IOVECS);
     let mut head = 0usize;
