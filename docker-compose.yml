@@ -10,12 +10,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.4"
+          cpus: "0.45"
           memory: "160M"
-    ulimits:
-      nofile:
-        soft: 65535
-        hard: 65535
     security_opt:
       - seccomp:unconfined
 
@@ -42,12 +38,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.2"
+          cpus: "0.1"
           memory: "30M"
-    ulimits:
-      nofile:
-        soft: 65535
-        hard: 65535
     security_opt:
       - seccomp:unconfined
 
